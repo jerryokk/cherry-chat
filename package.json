@@ -1,0 +1,23 @@
+{
+  "name": "cherry-chat",
+  "version": "1.0.0",
+  "description": "轻量级 AI 聊天应用，支持单聊和多角色群聊",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "ai",
+    "chat",
+    "openai",
+    "group-chat",
+    "multi-character"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1"
+  }
+}

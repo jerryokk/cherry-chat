@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>Cherry Chat</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h1 class="logo">Cherry Chat</h1>
+        <button class="new-chat-btn" id="newChatBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          New Chat
+        </button>
+        <button class="new-group-btn" id="newGroupBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          Group Chat
+        </button>
+      </div>
+      <div class="sessions-list" id="sessionsList"></div>
+      <div class="sidebar-footer">
+        <button class="icon-btn" id="themeBtn" title="Toggle Theme">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <button class="icon-btn" id="settingsBtn" title="Settings">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Chat Area -->
+    <main class="chat-main">
+      <!-- Top Bar with Model Selector -->
+      <div class="chat-header">
+        <button class="menu-btn" id="menuBtn">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="model-selector">
+          <select id="modelSelector">
+            <option value="">Select Model</option>
+          </select>
+          <button class="refresh-models-btn" id="refreshModelsBtn" title="Refresh Models">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6M1 20v-6h6M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+            </svg>
+          </button>
+        </div>
+        <span class="session-title" id="sessionTitle">New Chat</span>
+        <button class="clear-chat-btn" id="clearChatBtn" title="Clear current chat">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+        <button class="group-info-btn" id="groupInfoBtn" title="View Characters" style="display:none">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </button>
+        <button class="system-prompt-btn" id="systemPromptBtn" title="System Prompt">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="messages-container" id="messagesContainer">
+        <div class="welcome-message" id="welcomeMessage">
+          <div class="welcome-icon">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
+          <h2>Welcome to Cherry Chat</h2>
+          <p>Configure your API in Settings, then start chatting!</p>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="input-area">
+        <div class="input-container">
+          <!-- Image Preview Area -->
+          <div class="image-preview-area" id="imagePreviewArea"></div>
+
+          <div class="input-wrapper">
+            <textarea
+              id="messageInput"
+              placeholder="Type a message..."
+              rows="1"
+            ></textarea>
+            <div class="input-actions">
+              <button class="attach-btn" id="attachBtn" title="Attach Image">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+              </button>
+              <button class="stop-btn" id="stopBtn" title="Stop generating" style="display:none">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12"></rect>
+                </svg>
+              </button>
+              <button class="send-btn" id="sendBtn" title="Send (Enter)">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+            <!-- Scroll to bottom button -->
+      <button class="scroll-bottom-btn" id="scrollBottomBtn" style="display:none">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      </div>
+    </main>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="confirmModal">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h2 id="confirmTitle">Confirm</h2>
+          <button class="close-btn" id="closeConfirm">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="confirmMessage">Are you sure?</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="confirmCancel">Cancel</button>
+          <button class="btn-primary btn-danger" id="confirmOk">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Message Modal -->
+    <div class="modal-overlay" id="editMessageModal">
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <h2>Edit Message</h2>
+          <button class="close-btn" id="closeEditMessage">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <textarea id="editMessageInput" rows="6" placeholder="Edit your message..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancelEditMessage">Cancel</button>
+          <button class="btn-primary" id="saveEditMessage">Save & Regenerate</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="fileInput" accept="image/*" multiple style="display:none">
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Settings</h2>
+          <button class="close-btn" id="closeSettings">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="apiKey">API Key</label>
+            <input type="password" id="apiKey" placeholder="sk-...">
+            <small id="envKeyHint" style="display:none; color: var(--success)">Environment API key detected</small>
+          </div>
+          <div class="form-group">
+            <label for="baseUrl">API Base URL</label>
+            <input type="text" id="baseUrl" placeholder="https://api.openai.com/v1">
+          </div>
+          <div class="form-group">
+            <label>Default Model</label>
+            <input type="text" id="defaultModelInput" placeholder="gpt-4o-mini">
+            <small>The model selected above will be used for this session</small>
+          </div>
+          <div class="form-group">
+            <label>Context Rounds</label>
+            <input type="number" id="contextRounds" min="1" max="100" value="30" placeholder="30">
+            <small>Number of conversation rounds to include in context</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancelSettings">Cancel</button>
+          <button class="btn-primary" id="saveSettings">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Prompt Modal -->
+    <div class="modal-overlay" id="systemPromptModal">
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <h2 id="systemPromptTitle">System Prompt</h2>
+          <button class="close-btn" id="closeSystemPrompt">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="systemPrompt" id="systemPromptLabel">Set instructions for the AI assistant</label>
+            <textarea id="systemPrompt" rows="8" placeholder="You are a helpful assistant..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="generateBackgroundBtn" style="display:none">AI 生成</button>
+          <button class="btn-secondary" id="clearSystemPrompt">Clear</button>
+          <button class="btn-primary" id="saveSystemPrompt">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div class="modal-overlay" id="createGroupModal">
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <h2>Create Group Chat</h2>
+          <button class="close-btn" id="closeCreateGroup">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="groupPurpose">Group Purpose / Topic</label>
+            <textarea id="groupPurpose" rows="3" placeholder="Describe the purpose of this group chat, e.g., 'Discuss the pros and cons of remote work' or 'Role-play a business meeting'"></textarea>
+          </div>
+          <div class="characters-section" id="charactersSection" style="display:none">
+            <label>Generated Characters</label>
+            <div class="characters-list" id="charactersList"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="cancelCreateGroup">Cancel</button>
+          <button class="btn-primary" id="generateCharactersBtn">Generate Characters</button>
+          <button class="btn-primary" id="startGroupBtn" style="display:none">Start Group Chat</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Group Info Modal -->
+    <div class="modal-overlay" id="groupInfoModal">
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <h2 id="groupInfoTitle">Group Characters</h2>
+          <button class="close-btn" id="closeGroupInfo">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Topic</label>
+            <p id="groupInfoPurpose" style="color: var(--text-primary); margin-top: 4px;"></p>
+          </div>
+          <div class="characters-section" style="display:block">
+            <label>Characters</label>
+            <div class="characters-list" id="groupInfoCharacters"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-primary" id="closeGroupInfoBtn">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/markdown.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/group-chat.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
