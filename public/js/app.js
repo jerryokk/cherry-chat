@@ -75,6 +75,9 @@ const App = {
       charactersList: document.getElementById('charactersList'),
       generateCharactersBtn: document.getElementById('generateCharactersBtn'),
       startGroupBtn: document.getElementById('startGroupBtn'),
+      // Input role selector
+      inputRoleSelector: document.getElementById('inputRoleSelector'),
+      userRoleSelect: document.getElementById('userRoleSelect'),
       // Group info modal
       groupInfoBtn: document.getElementById('groupInfoBtn'),
       groupInfoModal: document.getElementById('groupInfoModal'),
@@ -92,6 +95,7 @@ const App = {
     this.confirmCallback = null;
     this.editingMessageIndex = null;
     this.generatedCharacters = [];
+    this.characterTooltip = null;
   },
 
   bindEvents() {
@@ -220,12 +224,76 @@ const App = {
     this.elements.generateCharactersBtn.addEventListener('click', () => this.handleGenerateCharacters());
     this.elements.startGroupBtn.addEventListener('click', () => this.handleStartGroup());
 
+    // User role selector
+    this.elements.userRoleSelect.addEventListener('change', () => this.updateInputPlaceholder());
+
     // Group info modal
     this.elements.groupInfoBtn.addEventListener('click', () => this.openGroupInfoModal());
     this.elements.closeGroupInfo.addEventListener('click', () => this.closeGroupInfoModal());
     this.elements.closeGroupInfoBtn.addEventListener('click', () => this.closeGroupInfoModal());
     this.elements.groupInfoModal.addEventListener('click', (e) => {
       if (e.target === this.elements.groupInfoModal) this.closeGroupInfoModal();
+    });
+
+    // Character avatar tooltip (delegated) - use mouseover/mouseout which bubble
+    this.elements.messagesContainer.addEventListener('mouseover', (e) => {
+      const avatar = e.target.closest('.message-avatar');
+      if (!avatar) return;
+
+      const messageEl = avatar.closest('.message.character');
+      if (!messageEl) return;
+
+      const charId = messageEl.dataset.characterId;
+      const sessionId = Storage.getCurrentSessionId();
+      const session = Storage.getSession(sessionId);
+      if (session && session.characters) {
+        const character = session.characters.find(c => c.id === charId);
+        if (character) {
+          this.showCharacterTooltip(e, character);
+        }
+      }
+    });
+
+    this.elements.messagesContainer.addEventListener('mouseout', (e) => {
+      const avatar = e.target.closest('.message-avatar');
+      if (avatar && avatar.closest('.message.character')) {
+        // Check if we're moving to a child element of the avatar
+        if (!avatar.contains(e.relatedTarget)) {
+          this.hideCharacterTooltip();
+        }
+      }
+    });
+
+    // Character prompt expand/collapse (delegated)
+    document.addEventListener('click', (e) => {
+      const prompt = e.target.closest('.character-prompt');
+      if (prompt) {
+        prompt.classList.toggle('expanded');
+      }
+    });
+
+    // Thought icon: click for mobile, hover for desktop
+    // Use touch detection to differentiate
+    let isTouchDevice = false;
+    document.addEventListener('touchstart', () => { isTouchDevice = true; }, { once: true });
+
+    document.addEventListener('click', (e) => {
+      const thoughtIcon = e.target.closest('.rp-thought-icon');
+      if (thoughtIcon) {
+        if (isTouchDevice) {
+          // Mobile: toggle on click
+          document.querySelectorAll('.rp-thought-icon.active').forEach(icon => {
+            if (icon !== thoughtIcon) icon.classList.remove('active');
+          });
+          thoughtIcon.classList.toggle('active');
+        }
+        // Desktop: do nothing on click, hover handles it
+      } else if (isTouchDevice) {
+        // Mobile: click outside closes all tooltips
+        document.querySelectorAll('.rp-thought-icon.active').forEach(icon => {
+          icon.classList.remove('active');
+        });
+      }
     });
   },
 
@@ -1058,6 +1126,12 @@ const App = {
 
   openCreateGroupModal() {
     this.elements.groupPurpose.value = '';
+    // Reset radio buttons to defaults
+    const modal = this.elements.createGroupModal;
+    modal.querySelector('input[name="speakersPerRound"][value="single"]').checked = true;
+    modal.querySelector('input[name="hasNarrator"][value="true"]').checked = true;
+    modal.querySelector('input[name="showThoughts"][value="true"]').checked = true;
+    modal.querySelector('input[name="showActions"][value="true"]').checked = true;
     this.elements.charactersSection.style.display = 'none';
     this.elements.charactersList.innerHTML = '';
     this.elements.generateCharactersBtn.style.display = 'inline-flex';
@@ -1082,7 +1156,7 @@ const App = {
       <div class="character-card">
         <div class="character-avatar" style="background: ${char.color}">${char.avatar}</div>
         <div class="character-info">
-          <div class="character-name">${this.escapeHtml(char.name)}</div>
+          <div class="character-name">${this.escapeHtml(char.name)}${char.age ? ` <span class="character-age">${this.escapeHtml(String(char.age))}</span>` : ''}</div>
           <div class="character-prompt">${this.escapeHtml(char.prompt)}</div>
         </div>
       </div>
@@ -1132,7 +1206,7 @@ const App = {
       <div class="character-card">
         <div class="character-avatar" style="background: ${char.color}">${char.avatar}</div>
         <div class="character-info">
-          <div class="character-name">${this.escapeHtml(char.name)}</div>
+          <div class="character-name">${this.escapeHtml(char.name)}${char.age ? ` <span class="character-age">${this.escapeHtml(String(char.age))}</span>` : ''}</div>
           <div class="character-prompt">${this.escapeHtml(char.prompt)}</div>
         </div>
       </div>
@@ -1146,8 +1220,18 @@ const App = {
       return;
     }
 
-    // Create group session
-    const session = Storage.createGroupSession(purpose, this.generatedCharacters);
+    // Collect settings from radio buttons
+    const modal = this.elements.createGroupModal;
+    const getRadioValue = (name) => modal.querySelector(`input[name="${name}"]:checked`)?.value;
+    const settings = {
+      speakersPerRound: getRadioValue('speakersPerRound') || 'free',
+      hasNarrator: getRadioValue('hasNarrator') === 'true',
+      showThoughts: getRadioValue('showThoughts') === 'true',
+      showActions: getRadioValue('showActions') === 'true'
+    };
+
+    // Create group session with settings
+    const session = Storage.createGroupSession(purpose, this.generatedCharacters, settings);
     this.closeCreateGroupModal();
     this.loadSessions();
     this.renderGroupMessages(session);
@@ -1206,7 +1290,7 @@ const App = {
         <div class="character-card">
           <div class="character-avatar" style="background: ${char.color}">${char.avatar}</div>
           <div class="character-info">
-            <div class="character-name">${this.escapeHtml(char.name)}</div>
+            <div class="character-name">${this.escapeHtml(char.name)}${char.age ? ` <span class="character-age">${this.escapeHtml(String(char.age))}</span>` : ''}</div>
             <div class="character-prompt">${this.escapeHtml(char.prompt)}</div>
           </div>
         </div>
@@ -1279,17 +1363,25 @@ const App = {
 
     // Character message
     const char = characters.find(c => c.id === message.characterId) || {
+      id: message.characterId,
       name: message.characterName || 'Unknown',
       color: message.characterColor || '#666',
       avatar: '?'
     };
-    const content = MarkdownRenderer.render(message.displayContent || message.content);
+
+    // Extract thought for placing icon next to name
+    const rawContent = message.displayContent || message.content;
+    const { thought, rest } = MarkdownRenderer.extractThought(rawContent);
+    const content = MarkdownRenderer.render(rest);
+    const thoughtIcon = thought
+      ? `<span class="rp-thought-icon" data-thought="${this.escapeHtml(thought).replace(/"/g, '&quot;')}">💭</span>`
+      : '';
 
     return `
-      <div class="message character" data-index="${index}">
+      <div class="message character" data-index="${index}" data-character-id="${char.id || ''}">
         <div class="message-avatar" style="background: ${char.color}">${char.avatar}</div>
         <div class="message-content">
-          <div class="character-label" style="color: ${char.color}">${this.escapeHtml(char.name)}</div>
+          <div class="character-label" style="color: ${char.color}">${this.escapeHtml(char.name)} ${thoughtIcon}</div>
           ${content}
           <div class="message-time">${time}</div>
         </div>
@@ -1300,6 +1392,7 @@ const App = {
   async handleGroupSend() {
     const content = this.elements.messageInput.value.trim();
     const images = [...this.pendingImages];
+    const userRole = this.elements.userRoleSelect.value; // narrator or passerby
 
     if (!content && images.length === 0) return;
 
@@ -1369,9 +1462,14 @@ const App = {
           console.error('No content div for:', character.name);
           return;
         }
+        // Extract thought and render separately
+        const { thought, rest } = MarkdownRenderer.extractThought(fullContent);
+        const thoughtIcon = thought
+          ? `<span class="rp-thought-icon" data-thought="${this.escapeHtml(thought).replace(/"/g, '&quot;')}">💭</span>`
+          : '';
         contentDiv.innerHTML = `
-          <div class="character-label" style="color: ${character.color}">${this.escapeHtml(character.name)}</div>
-          ${MarkdownRenderer.render(fullContent)}
+          <div class="character-label" style="color: ${character.color}">${this.escapeHtml(character.name)} ${thoughtIcon}</div>
+          ${MarkdownRenderer.render(rest)}
         `;
         this.scrollToBottom();
       },
@@ -1380,9 +1478,14 @@ const App = {
         const contentDiv = placeholder.querySelector('.message-content');
         if (!contentDiv) return;
         const time = this.formatTime(Date.now());
+        // Extract thought and render separately
+        const { thought, rest } = MarkdownRenderer.extractThought(fullContent);
+        const thoughtIcon = thought
+          ? `<span class="rp-thought-icon" data-thought="${this.escapeHtml(thought).replace(/"/g, '&quot;')}">💭</span>`
+          : '';
         contentDiv.innerHTML = `
-          <div class="character-label" style="color: ${character.color}">${this.escapeHtml(character.name)}</div>
-          ${MarkdownRenderer.render(fullContent)}
+          <div class="character-label" style="color: ${character.color}">${this.escapeHtml(character.name)} ${thoughtIcon}</div>
+          ${MarkdownRenderer.render(rest)}
           <div class="message-time">${time}</div>
         `;
       },
@@ -1405,7 +1508,7 @@ const App = {
       }
     };
 
-    await GroupChat.sendGroupMessage(sessionId, content, images, callbacks);
+    await GroupChat.sendGroupMessage(sessionId, content, images, callbacks, userRole);
   },
 
   addGroupMessageToUI(message, characters) {
@@ -1431,6 +1534,7 @@ const App = {
 
     const div = document.createElement('div');
     div.className = 'message character';
+    div.dataset.characterId = character.id;
     div.innerHTML = `
       <div class="message-avatar" style="background: ${character.color}">${character.avatar}</div>
       <div class="message-content">
@@ -1474,7 +1578,7 @@ const App = {
       <div class="character-card">
         <div class="character-avatar" style="background: ${char.color}">${char.avatar}</div>
         <div class="character-info">
-          <div class="character-name">${this.escapeHtml(char.name)}</div>
+          <div class="character-name">${this.escapeHtml(char.name)}${char.age ? ` <span class="character-age">${this.escapeHtml(String(char.age))}</span>` : ''}</div>
           <div class="character-prompt">${this.escapeHtml(char.prompt)}</div>
         </div>
       </div>
@@ -1492,6 +1596,63 @@ const App = {
     const session = Storage.getSession(sessionId);
     const isGroup = session && session.type === 'group';
     this.elements.groupInfoBtn.style.display = isGroup ? 'flex' : 'none';
+    this.elements.inputRoleSelector.style.display = isGroup ? 'block' : 'none';
+
+    // Update input placeholder based on role
+    if (isGroup) {
+      this.updateInputPlaceholder();
+    } else {
+      this.elements.messageInput.placeholder = 'Type a message...';
+    }
+  },
+
+  updateInputPlaceholder() {
+    const role = this.elements.userRoleSelect.value;
+    if (role === 'narrator') {
+      this.elements.messageInput.placeholder = '输入画外音/旁白...';
+    } else {
+      this.elements.messageInput.placeholder = '输入路人甲的发言...';
+    }
+  },
+
+  // Character tooltip on avatar hover
+  showCharacterTooltip(event, character) {
+    this.hideCharacterTooltip();
+
+    const tooltip = document.createElement('div');
+    tooltip.className = 'character-tooltip';
+    const ageText = character.age ? ` (${character.age})` : '';
+    tooltip.innerHTML = `
+      <div class="tooltip-name">${this.escapeHtml(character.name)}${this.escapeHtml(ageText)}</div>
+      <div>${this.escapeHtml(character.prompt)}</div>
+    `;
+    document.body.appendChild(tooltip);
+    this.characterTooltip = tooltip;
+
+    // Position tooltip
+    const rect = event.target.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+
+    let left = rect.right + 8;
+    let top = rect.top;
+
+    // Adjust if goes off screen
+    if (left + tooltipRect.width > window.innerWidth) {
+      left = rect.left - tooltipRect.width - 8;
+    }
+    if (top + tooltipRect.height > window.innerHeight) {
+      top = window.innerHeight - tooltipRect.height - 8;
+    }
+
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
+  },
+
+  hideCharacterTooltip() {
+    if (this.characterTooltip) {
+      this.characterTooltip.remove();
+      this.characterTooltip = null;
+    }
   }
 };
 

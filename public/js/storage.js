@@ -48,7 +48,7 @@ const Storage = {
     return session;
   },
 
-  createGroupSession(purpose, characters) {
+  createGroupSession(purpose, characters, settings = {}) {
     const sessions = this.getSessions();
     const session = {
       id: 'g_' + Date.now(),
@@ -57,6 +57,11 @@ const Storage = {
       purpose: purpose,
       characters: characters,
       messages: [],
+      // Group settings
+      speakersPerRound: settings.speakersPerRound || 'free',
+      hasNarrator: settings.hasNarrator !== false,
+      showThoughts: settings.showThoughts !== false,
+      showActions: settings.showActions !== false,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };

@@ -114,6 +114,13 @@
           <div class="image-preview-area" id="imagePreviewArea"></div>
 
           <div class="input-wrapper">
+            <!-- Role selector for group chat -->
+            <div class="input-role-selector" id="inputRoleSelector" style="display:none">
+              <select id="userRoleSelect">
+                <option value="narrator">画外音</option>
+                <option value="passerby">路人甲</option>
+              </select>
+            </div>
             <textarea
               id="messageInput"
               placeholder="Type a message..."
@@ -256,18 +263,77 @@
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label for="groupPurpose">Group Purpose / Topic</label>
-            <textarea id="groupPurpose" rows="3" placeholder="Describe the purpose of this group chat, e.g., 'Discuss the pros and cons of remote work' or 'Role-play a business meeting'"></textarea>
+            <label for="groupPurpose">话题 / 场景</label>
+            <textarea id="groupPurpose" rows="3" placeholder="描述群聊的话题或场景，如：'三国群雄讨论天下大势' 或 '修仙门派弟子比试'"></textarea>
           </div>
+
+          <div class="form-group">
+            <label>群聊设置</label>
+            <div class="settings-grid">
+              <div class="setting-item">
+                <span class="setting-label">每轮发言</span>
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input type="radio" name="speakersPerRound" value="free">
+                    <span>自由</span>
+                  </label>
+                  <label class="radio-label">
+                    <input type="radio" name="speakersPerRound" value="single" checked>
+                    <span>单人</span>
+                  </label>
+                </div>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">画外音</span>
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input type="radio" name="hasNarrator" value="true" checked>
+                    <span>开启</span>
+                  </label>
+                  <label class="radio-label">
+                    <input type="radio" name="hasNarrator" value="false">
+                    <span>关闭</span>
+                  </label>
+                </div>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">内心戏</span>
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input type="radio" name="showThoughts" value="true" checked>
+                    <span>显示</span>
+                  </label>
+                  <label class="radio-label">
+                    <input type="radio" name="showThoughts" value="false">
+                    <span>隐藏</span>
+                  </label>
+                </div>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">动作</span>
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input type="radio" name="showActions" value="true" checked>
+                    <span>显示</span>
+                  </label>
+                  <label class="radio-label">
+                    <input type="radio" name="showActions" value="false">
+                    <span>隐藏</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="characters-section" id="charactersSection" style="display:none">
-            <label>Generated Characters</label>
+            <label>生成的角色</label>
             <div class="characters-list" id="charactersList"></div>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" id="cancelCreateGroup">Cancel</button>
-          <button class="btn-primary" id="generateCharactersBtn">Generate Characters</button>
-          <button class="btn-primary" id="startGroupBtn" style="display:none">Start Group Chat</button>
+          <button class="btn-primary" id="generateCharactersBtn">生成角色</button>
+          <button class="btn-primary" id="startGroupBtn" style="display:none">开始群聊</button>
         </div>
       </div>
     </div>

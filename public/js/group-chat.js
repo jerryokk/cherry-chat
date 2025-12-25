@@ -54,6 +54,8 @@ const GroupChat = {
           purpose: session.purpose,
           characters: session.characters,
           recentMessages,
+          speakersPerRound: session.speakersPerRound || 'free',
+          hasNarrator: session.hasNarrator !== false,
           apiKey: settings.apiKey || undefined,
           baseUrl: settings.baseUrl || undefined,
           model: settings.model || undefined
@@ -103,6 +105,8 @@ const GroupChat = {
             characterId: m.characterId,
             characterName: m.characterName
           })),
+          showThoughts: session.showThoughts !== false,
+          showActions: session.showActions !== false,
           apiKey: settings.apiKey || undefined,
           baseUrl: settings.baseUrl || undefined,
           model: settings.model || undefined
@@ -186,8 +190,104 @@ const GroupChat = {
     }
   },
 
+  // Narrator speaks - scene descriptions, time progression, etc.
+  async narratorSpeak(sessionId, callbacks) {
+    const settings = Storage.getSettings();
+    const session = Storage.getSession(sessionId);
+
+    if (!session) return;
+
+    const controller = new AbortController();
+    this.abortControllers.push(controller);
+
+    // Create narrator "character" for display
+    const narrator = {
+      id: 'narrator',
+      name: '画外音',
+      color: '#64748b',
+      avatar: '📖'
+    };
+
+    const placeholder = callbacks.onCharacterStart(narrator);
+
+    try {
+      const response = await fetch('/api/narrator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          purpose: session.purpose,
+          backgroundStory: session.backgroundStory || '',
+          messages: session.messages.slice(-15).map(m => ({
+            role: m.role,
+            content: m.content,
+            characterName: m.characterName
+          })),
+          apiKey: settings.apiKey || undefined,
+          baseUrl: settings.baseUrl || undefined,
+          model: settings.model || undefined
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        callbacks.onCharacterError(narrator, 'Narrator failed', placeholder);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let content = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('data: ')) {
+            const data = trimmed.slice(6);
+            if (data !== '[DONE]') {
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  content += parsed.content;
+                  callbacks.onCharacterChunk(narrator, parsed.content, content, placeholder);
+                }
+              } catch (e) {}
+            }
+          }
+        }
+      }
+
+      // Save narrator message
+      if (content) {
+        const narratorMessage = {
+          role: 'narrator',
+          characterId: 'narrator',
+          characterName: '画外音',
+          characterColor: '#64748b',
+          content: content,
+          displayContent: content,
+          timestamp: Date.now()
+        };
+        session.messages.push(narratorMessage);
+        Storage.updateSession(sessionId, { messages: session.messages });
+        callbacks.onCharacterComplete(narrator, content, placeholder);
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        callbacks.onCharacterError(narrator, error.message, placeholder);
+      }
+    }
+  },
+
   // Send user message and trigger group chat loop
-  async sendGroupMessage(sessionId, content, images, callbacks) {
+  async sendGroupMessage(sessionId, content, images, callbacks, userRole = 'narrator') {
     if (this.isProcessing) {
       this.abort();
       return;
@@ -203,12 +303,16 @@ const GroupChat = {
       let finalContent = content || '';
       let displayContent = content || '';
 
+      // Format content based on user role
+      const rolePrefix = userRole === 'narrator' ? '[画外音]' : '[路人甲]';
+
       if (images && images.length > 0) {
         // Show user message with images, initially with loading state for interpretation
         const userMessage = {
           role: 'user',
+          userRole: userRole,
           content: content,
-          displayContent: content,
+          displayContent: `${rolePrefix} ${content}`,
           images: images,
           interpretation: null, // Will be filled after AI describes
           timestamp: Date.now()
@@ -232,11 +336,11 @@ const GroupChat = {
         }
 
         const imageText = descriptions.join('\n');
-        // Build full context: user text + image descriptions
+        // Build full context: rolePrefix + user text + image descriptions
         if (content) {
-          finalContent = `${content}\n[用户发送了${images.length}张图片]\n${imageText}`;
+          finalContent = `${rolePrefix} ${content}\n[用户发送了${images.length}张图片]\n${imageText}`;
         } else {
-          finalContent = `[用户发送了${images.length}张图片]\n${imageText}`;
+          finalContent = `${rolePrefix} [用户发送了${images.length}张图片]\n${imageText}`;
         }
 
         // Update user message with interpretation
@@ -251,8 +355,9 @@ const GroupChat = {
         // No images, just add user message
         const userMessage = {
           role: 'user',
-          content: finalContent,
-          displayContent: displayContent,
+          userRole: userRole,
+          content: `${rolePrefix} ${finalContent}`,
+          displayContent: `${rolePrefix} ${displayContent}`,
           images: [],
           timestamp: Date.now()
         };
@@ -294,13 +399,23 @@ const GroupChat = {
 
         // Get characters that need to respond
         const session = Storage.getSession(sessionId);
+
+        // Check if narrator is in respondents
+        const hasNarratorResponse = decision.respondents.includes('narrator');
+        const characterIds = decision.respondents.filter(id => id !== 'narrator');
+
         const respondingCharacters = session.characters.filter(c =>
-          decision.respondents.includes(c.id)
+          characterIds.includes(c.id)
         );
 
-        if (respondingCharacters.length === 0) {
+        if (respondingCharacters.length === 0 && !hasNarratorResponse) {
           callbacks.onRoundComplete(round, 'No valid respondents');
           break;
+        }
+
+        // Handle narrator first if present
+        if (hasNarratorResponse) {
+          await this.narratorSpeak(sessionId, callbacks);
         }
 
         // Characters speak in parallel - collect results first, then save together
